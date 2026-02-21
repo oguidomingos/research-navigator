@@ -8,12 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Paper, Collection, SavedPaper
 from app.schemas import SummaryRequest, SummaryResponse, CollectionSummaryRequest, CollectionSummaryResponse
 from app.core.config import settings
-from openai import AsyncOpenAI
+
+try:
+    from openai import AsyncOpenAI
+except Exception:  # pragma: no cover - optional dependency in local no-DB mode
+    AsyncOpenAI = None
 
 
 class SummaryService:
     def __init__(self):
-        self.openai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY) if settings.OPENAI_API_KEY else None
+        self.openai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY) if (settings.OPENAI_API_KEY and AsyncOpenAI) else None
 
     async def generate_article_summary(self, request: SummaryRequest, db: AsyncSession) -> Optional[SummaryResponse]:
         result = await db.execute(select(Paper).where(Paper.id == request.article_id))

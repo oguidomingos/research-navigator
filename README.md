@@ -55,6 +55,12 @@ docker-compose up -d
 open http://localhost:8000/docs
 ```
 
+Atalho:
+
+```bash
+./scripts/dev-up.sh
+```
+
 ### Sem Docker
 
 ```bash

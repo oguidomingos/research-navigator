@@ -12,6 +12,8 @@ article_service = ArticleService()
 
 @router.get("/{article_id}", response_model=ArticleResponse)
 async def get_article(article_id: int, db: AsyncSession = Depends(get_db)):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database disabled in current environment")
     article = await article_service.get_article(article_id, db)
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")

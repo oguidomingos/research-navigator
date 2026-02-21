@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import Collection, SavedPaper, Paper
-from app.schemas import CollectionCreate, CollectionUpdate
+from app.schemas import CollectionCreate
 
 
 class CollectionService:

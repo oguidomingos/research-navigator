@@ -25,10 +25,16 @@ async def search_articles(request: SearchRequest, db: AsyncSession = Depends(get
 
     search_time = (time.time() - start_time) * 1000
 
+    normalized_results = []
+    for idx, article in enumerate(results['articles']):
+        if 'id' not in article or article['id'] is None:
+            article['id'] = idx + 1
+        normalized_results.append(ArticleResponse(**article))
+
     return SearchResponse(
         query=request.query,
         total=results['total'],
-        results=[ArticleResponse(**article) for article in results['articles']],
+        results=normalized_results,
         sources_used=results['sources_used'],
         cached=False,
         search_time_ms=search_time

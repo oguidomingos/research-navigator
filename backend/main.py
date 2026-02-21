@@ -11,7 +11,7 @@ import os
 
 load_dotenv()
 
-from app.core.config import settings
+from app.core.config import settings, get_cors_origins
 from app.core.database import init_db, close_db
 from app.api.v1 import api_router
 
@@ -36,7 +36,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,7 +58,7 @@ async def root():
 async def health():
     return {
         "status": "healthy",
-        "database": "connected",
+        "database": "disabled" if settings.DISABLE_DB else "connected",
         "redis": "connected" if settings.REDIS_URL else "disabled"
     }
 

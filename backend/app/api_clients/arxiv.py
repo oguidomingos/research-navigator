@@ -6,7 +6,7 @@ import feedparser
 
 
 class ArxivClient(BaseClient):
-    BASE_URL = "http://export.arxiv.org/api/query"
+    BASE_URL = "https://export.arxiv.org/api/query"
 
     async def search(self, query: str, filters: Dict[str, Any], limit: int) -> Dict[str, Any]:
         params = {"search_query": f"all:{query}", "max_results": min(limit, 100)}

@@ -124,3 +124,76 @@ class CitationResponse(BaseModel):
     style: str
     citation: str
     bibkey: Optional[str] = None
+
+
+class LLMArticleInput(BaseModel):
+    local_id: Optional[int] = None
+    title: str
+    authors: List[str] = []
+    year: Optional[int] = None
+    journal: Optional[str] = None
+    doi: Optional[str] = None
+    abstract: Optional[str] = None
+    methodology: Optional[str] = None
+    limitations: List[str] = []
+    conclusions: List[str] = []
+
+
+class LLMQuickSummaryRequest(BaseModel):
+    article: LLMArticleInput
+    language: str = "pt-BR"
+
+
+class LLMQuickSummaryResponse(BaseModel):
+    objetivo: str
+    metodologia: str
+    principais_achados: str
+    limitacoes: str
+    implicacoes_praticas: str
+    raw: str
+
+
+class LLMAskArticleRequest(BaseModel):
+    article: LLMArticleInput
+    question: str
+    language: str = "pt-BR"
+
+
+class LLMAskArticleResponse(BaseModel):
+    answer: str
+    citation: str
+
+
+class LLMSynthesisRequest(BaseModel):
+    articles: List[LLMArticleInput]
+    synthesis_type: str = "Revisao comparativa"
+    size: str = "Medio"
+    language: str = "pt-BR"
+
+
+class LLMSynthesisResponse(BaseModel):
+    introducao: str
+    convergencias: str
+    divergencias: str
+    lacunas: str
+    recomendacoes: str
+    referencias_apa: List[str]
+    raw: str
+
+
+class LLMRecommendResultsRequest(BaseModel):
+    instruction: str
+    articles: List[LLMArticleInput]
+    language: str = "pt-BR"
+
+
+class LLMRecommendedArticle(BaseModel):
+    local_id: int
+    reason: str
+
+
+class LLMRecommendResultsResponse(BaseModel):
+    recommendations: List[LLMRecommendedArticle]
+    summary: str
+    suggested_filters: Dict[str, Any] = {}
+    raw: str

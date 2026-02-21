@@ -104,11 +104,13 @@ class SearchService:
                 score = 0
                 title = article.get('title', '').lower()
                 abstract = article.get('abstract', '').lower()
+                year = article.get('year') or 0
+                citations = article.get('citation_count') or 0
                 for term in query_terms:
                     if term in title: score += 10
                     if term in abstract: score += 5
-                if article.get('year', 0) >= 2020: score += 2
-                if article.get('citation_count', 0) >= 100: score += 3
+                if isinstance(year, int) and year >= 2020: score += 2
+                if isinstance(citations, int) and citations >= 100: score += 3
                 return score
             return sorted(articles, key=calc_score, reverse=True)
 

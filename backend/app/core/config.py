@@ -3,11 +3,15 @@
 from pydantic_settings import BaseSettings
 from typing import List
 from functools import lru_cache
+from pathlib import Path
+
+ROOT_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
 
 
 class Settings(BaseSettings):
     APP_NAME: str = "Research Navigator"
     DEBUG: bool = False
+    DISABLE_DB: bool = False
     
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://research:research123@localhost:5432/research_navigator"
@@ -18,6 +22,9 @@ class Settings(BaseSettings):
     
     # LLM
     OPENAI_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "openai/gpt-5.1-mini"
     LLM_MODEL: str = "gpt-4-turbo-preview"
     LLM_MAX_TOKENS: int = 4000
     
@@ -30,14 +37,15 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production"
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: str = "http://localhost:3000"
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
 
     class Config:
-        env_file = ".env"
+        env_file = str(ROOT_ENV_FILE)
         case_sensitive = True
+        extra = "ignore"
 
 
 @lru_cache()
@@ -46,3 +54,7 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+
+def get_cors_origins() -> List[str]:
+    return [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]

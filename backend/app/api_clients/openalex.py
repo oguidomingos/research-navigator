@@ -33,13 +33,14 @@ class OpenAlexClient(BaseClient):
             return {'articles': []}
 
     def _extract(self, raw: Dict) -> Dict:
-        location = raw.get('primary_location', {})
+        location = raw.get('primary_location') or {}
+        source = location.get('source') or {}
         return {
             'title': raw.get('title') or '',
             'authors': [{'name': a.get('author', {}).get('display_name', '')} for a in raw.get('authorships', [])],
             'year': raw.get('publication_year'),
-            'journal': location.get('source', {}).get('display_name', ''),
-            'doi': location.get('doi') or '',
+            'journal': source.get('display_name', ''),
+            'doi': location.get('doi') or raw.get('doi') or '',
             'abstract': self._reconstruct_abstract(raw.get('abstract_inverted_index')) or '',
             'citation_count': raw.get('cited_by_count', 0) or 0,
             'url': location.get('landing_url') or '',

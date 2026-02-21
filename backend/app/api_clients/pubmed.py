@@ -34,9 +34,17 @@ class PubMedClient(BaseClient):
             return {'articles': []}
 
     def _extract(self, raw: Dict) -> Dict:
+        authors = raw.get('authors', [])
+        normalized_authors = []
+        for author in authors:
+            if isinstance(author, dict):
+                normalized_authors.append({'name': author.get('name', '')})
+            elif isinstance(author, str):
+                normalized_authors.append({'name': author})
+
         return {
             'title': raw.get('title') or '',
-            'authors': [{'name': f"{a.get('name', {}).get('lastname', '')} {a.get('name', {}).get('initials', '')}"} for a in raw.get('authors', [])],
+            'authors': normalized_authors,
             'year': int(raw.get('pubdate', '').split()[0]) if raw.get('pubdate') else None,
             'journal': raw.get('source') or '',
             'pmid': raw.get('pmid') or '',
