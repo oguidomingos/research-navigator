@@ -11,11 +11,6 @@
       "main": true
     }
   },
-  "env": {
-    "VITE_CLERK_PUBLISHABLE_KEY": "@clerk_publishable_key",
-    "VITE_CONVEX_URL": "@convex_url",
-    "VITE_API_BASE_URL": "@api_base_url"
-  },
   "headers": [
     {
       "source": "/(.*)",
