@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-import { ClerkProvider, useAuth } from "@clerk/clerk-react";
+import { ClerkProvider } from "@clerk/clerk-react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 
 // Validar env vars
