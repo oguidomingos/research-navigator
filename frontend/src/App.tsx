@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import {
   BookMarked,
   ChevronDown,
@@ -18,6 +18,9 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
+import { SignIn, SignOutButton, useUser } from "@clerk/clerk-react";
+import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import './App.css';
 import { synthesisTemplate } from './mockData';
 import type { Article, BadgeType, SavedArticle, StructuredSummary } from './types';
@@ -30,7 +33,6 @@ const RESULTS_STORAGE = 'ibpr_real_results';
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
 
 interface AppState {
-  isLoggedIn: boolean;
   darkMode: boolean;
   saved: SavedArticle[];
   history: string[];
@@ -63,7 +65,6 @@ interface LLMArticlePayload {
 }
 
 const initialState: AppState = {
-  isLoggedIn: false,
   darkMode: false,
   saved: [],
   history: [],
@@ -258,13 +259,37 @@ function AppShell() {
 
   return (
     <>
-      <Routes>
-        <Route path="/login" element={<LoginPage shared={shared} />} />
-        <Route
-          path="/*"
-          element={appState.isLoggedIn ? <MainLayout shared={shared} /> : <Navigate to="/login" replace />}
-        />
-      </Routes>
+      <AuthLoading>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh"
+        }}>
+          <p>Carregando autenticação...</p>
+        </div>
+      </AuthLoading>
+
+      <Unauthenticated>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Unauthenticated>
+
+      <Authenticated>
+        <Routes>
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <MainLayout shared={shared} />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Authenticated>
+
       {toast && <div className="toast">{toast}</div>}
       {summaryTarget && <QuickSummaryModal article={summaryTarget} onClose={() => setSummaryTarget(null)} onSave={() => saveArticle(summaryTarget.id)} />}
       {synthesisOpen && (
@@ -288,26 +313,19 @@ function AppShell() {
   );
 }
 
-function LoginPage({ shared }: { shared: any }) {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const login = () => {
-    if (!email || !password) return;
-    shared.setAppState((prev: AppState) => ({ ...prev, isLoggedIn: true }));
-    navigate('/dashboard');
-  };
-
+function LoginPage() {
   return (
     <div className="login-screen">
       <div className="login-card">
         <h1>IBPR Research Assistant</h1>
         <p>Assistente acadêmico para busca, análise e síntese de evidências.</p>
-        <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seuemail@ibpr.org" type="email" /></label>
-        <label>Senha<input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" type="password" /></label>
-        <button className="primary" onClick={login}>Entrar</button>
-        <button className="linklike" onClick={() => { shared.setAppState((prev: AppState) => ({ ...prev, isLoggedIn: true })); navigate('/dashboard'); }}>Acessar versao demo</button>
+
+        <SignIn
+          routing="path"
+          path="/login"
+          signUpUrl="/signup"
+          afterSignInUrl="/dashboard"
+        />
       </div>
     </div>
   );
@@ -315,7 +333,7 @@ function LoginPage({ shared }: { shared: any }) {
 
 function MainLayout({ shared }: { shared: any }) {
   const location = useLocation();
-  const navigate = useNavigate();
+  const { user } = useUser();
 
   return (
     <div className="app-frame">
@@ -333,8 +351,16 @@ function MainLayout({ shared }: { shared: any }) {
           <button className="icon-btn" onClick={() => shared.setAppState((prev: AppState) => ({ ...prev, darkMode: !prev.darkMode }))}>
             {shared.appState.darkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <span className="user-pill"><User size={14} /> pesquisador@ibpr.org</span>
-          <button className="icon-btn" onClick={() => { shared.setAppState((prev: AppState) => ({ ...prev, isLoggedIn: false })); navigate('/login'); }}><LogOut size={16} /></button>
+
+          <span className="user-pill">
+            <User size={14} /> {user?.primaryEmailAddress?.emailAddress || "Usuário"}
+          </span>
+
+          <SignOutButton>
+            <button className="icon-btn">
+              <LogOut size={16} />
+            </button>
+          </SignOutButton>
         </header>
 
         <Routes>
