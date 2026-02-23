@@ -5,7 +5,6 @@
   "framework": "vite",
   "devCommand": "cd frontend && npm run dev",
   "installCommand": "cd frontend && npm install",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./frontend/",
   "git": {
     "deploymentEnabled": {
       "main": true
