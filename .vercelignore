@@ -24,9 +24,6 @@ htmlcov
 .DS_Store
 Thumbs.db
 
-# Git
-.git
-
 # Convex generated
 convex/_generated
 
