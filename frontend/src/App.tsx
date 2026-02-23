@@ -28,26 +28,37 @@ const APP_STORAGE = 'ibpr_mvp_state';
 const RESULTS_STORAGE = 'ibpr_real_results';
 
 function resolveApiBaseUrl() {
-  const raw = String(import.meta.env.VITE_API_BASE_URL ?? '').trim();
-  const withoutControlPrefix = raw.replace(/^[\s\\n\\r\\t]+/, '');
-  const fixedCommonTypo = withoutControlPrefix.replace(/^n(?=https?:\/\/)/i, '');
-  const fallback = 'http://localhost:8000/api/v1';
+  const raw = String(import.meta.env.VITE_API_BASE_URL ?? '');
+  const cleaned = raw
+    .trim()
+    .replace(/^['"`]+|['"`]+$/g, '')
+    .replace(/\s+/g, '');
+  const fixedCommonTypo = cleaned.replace(/^n(?=https?:\/\/)/i, '');
+  const prodFallback = 'https://api.icebergcompany.com.br/research/api/v1';
+  const devFallback = 'http://localhost:8000/api/v1';
+  const fallback = import.meta.env.PROD ? prodFallback : devFallback;
   const candidate = fixedCommonTypo || fallback;
 
-  try {
-    const parsed = new URL(candidate);
-    const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    if (!isHttp) throw new Error('Invalid URL protocol');
-
-    const isLocalhost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname);
-    if (import.meta.env.PROD && isLocalhost) {
-      throw new Error('VITE_API_BASE_URL points to localhost in production');
+  const isValidHttpUrl = (value: string) => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
     }
+  };
 
-    return parsed.toString().replace(/\/$/, '');
-  } catch {
-    throw new Error('Invalid VITE_API_BASE_URL. Configure a valid production backend URL, e.g. https://api.seudominio.com/api/v1');
+  if (!isValidHttpUrl(candidate)) {
+    return fallback;
   }
+
+  const parsed = new URL(candidate);
+  const isLocalhost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname);
+  if (import.meta.env.PROD && isLocalhost) {
+    return prodFallback;
+  }
+
+  return parsed.toString().replace(/\/$/, '');
 }
 
 const API_BASE = resolveApiBaseUrl();
