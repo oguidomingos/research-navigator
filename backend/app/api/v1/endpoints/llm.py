@@ -21,7 +21,7 @@ llm_service = LLMService()
 @router.post("/quick-summary", response_model=LLMQuickSummaryResponse)
 async def quick_summary(request: LLMQuickSummaryRequest):
     if not llm_service.is_configured:
-        raise HTTPException(status_code=503, detail="OpenRouter is not configured")
+        raise HTTPException(status_code=503, detail=f"OpenRouter is not configured: {llm_service.configuration_issue}")
     try:
         return await llm_service.quick_summary(request.article, request.language)
     except Exception as exc:
@@ -31,7 +31,7 @@ async def quick_summary(request: LLMQuickSummaryRequest):
 @router.post("/ask-article", response_model=LLMAskArticleResponse)
 async def ask_article(request: LLMAskArticleRequest):
     if not llm_service.is_configured:
-        raise HTTPException(status_code=503, detail="OpenRouter is not configured")
+        raise HTTPException(status_code=503, detail=f"OpenRouter is not configured: {llm_service.configuration_issue}")
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="Question is required")
     try:
@@ -43,7 +43,7 @@ async def ask_article(request: LLMAskArticleRequest):
 @router.post("/synthesize", response_model=LLMSynthesisResponse)
 async def synthesize(request: LLMSynthesisRequest):
     if not llm_service.is_configured:
-        raise HTTPException(status_code=503, detail="OpenRouter is not configured")
+        raise HTTPException(status_code=503, detail=f"OpenRouter is not configured: {llm_service.configuration_issue}")
     if len(request.articles) < 2:
         raise HTTPException(status_code=400, detail="At least 2 articles are required")
     try:
@@ -55,7 +55,7 @@ async def synthesize(request: LLMSynthesisRequest):
 @router.post("/recommend-results", response_model=LLMRecommendResultsResponse)
 async def recommend_results(request: LLMRecommendResultsRequest):
     if not llm_service.is_configured:
-        raise HTTPException(status_code=503, detail="OpenRouter is not configured")
+        raise HTTPException(status_code=503, detail=f"OpenRouter is not configured: {llm_service.configuration_issue}")
     if not request.instruction.strip():
         raise HTTPException(status_code=400, detail="Instruction is required")
     if not request.articles:

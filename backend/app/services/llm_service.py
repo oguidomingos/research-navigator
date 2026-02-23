@@ -18,22 +18,43 @@ from app.schemas import (
 
 try:
     from openai import AsyncOpenAI
-except Exception:  # pragma: no cover
+    OPENAI_IMPORT_ERROR = None
+except Exception as exc:  # pragma: no cover
     AsyncOpenAI = None
+    OPENAI_IMPORT_ERROR = str(exc)
 
 
 class LLMService:
     def __init__(self):
         self.client = None
-        if AsyncOpenAI and settings.OPENROUTER_API_KEY:
-            self.client = AsyncOpenAI(
-                api_key=settings.OPENROUTER_API_KEY,
-                base_url=settings.OPENROUTER_BASE_URL,
-            )
+        self._init_client()
+
+    def _init_client(self) -> None:
+        if self.client is not None:
+            return
+        if not AsyncOpenAI:
+            return
+        if not settings.OPENROUTER_API_KEY:
+            return
+        self.client = AsyncOpenAI(
+            api_key=settings.OPENROUTER_API_KEY,
+            base_url=settings.OPENROUTER_BASE_URL,
+        )
 
     @property
     def is_configured(self) -> bool:
+        self._init_client()
         return self.client is not None
+
+    @property
+    def configuration_issue(self) -> str:
+        if self.client is not None:
+            return ""
+        if OPENAI_IMPORT_ERROR:
+            return f"openai import failed: {OPENAI_IMPORT_ERROR}"
+        if not settings.OPENROUTER_API_KEY:
+            return "missing OPENROUTER_API_KEY"
+        return "unknown configuration issue"
 
     async def _complete(self, prompt: str) -> str:
         if not self.client:
