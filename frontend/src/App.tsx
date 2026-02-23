@@ -26,7 +26,31 @@ type SynthesisSize = 'Curto' | 'Medio' | 'Longo';
 
 const APP_STORAGE = 'ibpr_mvp_state';
 const RESULTS_STORAGE = 'ibpr_real_results';
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
+
+function resolveApiBaseUrl() {
+  const raw = String(import.meta.env.VITE_API_BASE_URL ?? '').trim();
+  const withoutControlPrefix = raw.replace(/^[\s\\n\\r\\t]+/, '');
+  const fixedCommonTypo = withoutControlPrefix.replace(/^n(?=https?:\/\/)/i, '');
+  const fallback = 'http://localhost:8000/api/v1';
+  const candidate = fixedCommonTypo || fallback;
+
+  try {
+    const parsed = new URL(candidate);
+    const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    if (!isHttp) throw new Error('Invalid URL protocol');
+
+    const isLocalhost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname);
+    if (import.meta.env.PROD && isLocalhost) {
+      throw new Error('VITE_API_BASE_URL points to localhost in production');
+    }
+
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    throw new Error('Invalid VITE_API_BASE_URL. Configure a valid production backend URL, e.g. https://api.seudominio.com/api/v1');
+  }
+}
+
+const API_BASE = resolveApiBaseUrl();
 
 interface AppState {
   darkMode: boolean;
