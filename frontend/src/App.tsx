@@ -18,7 +18,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { SignIn, SignOutButton, useUser } from "@clerk/clerk-react";
+import { SignIn, SignUp, SignOutButton, useUser } from "@clerk/clerk-react";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import './App.css';
@@ -273,6 +273,7 @@ function AppShell() {
       <Unauthenticated>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Unauthenticated>
@@ -325,6 +326,24 @@ function LoginPage() {
           path="/login"
           signUpUrl="/signup"
           afterSignInUrl="/dashboard"
+        />
+      </div>
+    </div>
+  );
+}
+
+function SignUpPage() {
+  return (
+    <div className="login-screen">
+      <div className="login-card">
+        <h1>IBPR Research Assistant</h1>
+        <p>Assistente acadêmico para busca, análise e síntese de evidências.</p>
+
+        <SignUp
+          routing="path"
+          path="/signup"
+          signInUrl="/login"
+          afterSignUpUrl="/dashboard"
         />
       </div>
     </div>
