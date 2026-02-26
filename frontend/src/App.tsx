@@ -7,6 +7,7 @@ import {
   FileText,
   History,
   LayoutDashboard,
+  LogOut,
   Moon,
   MessageCircle,
   Search,
@@ -17,6 +18,8 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
+import { SignIn, SignOutButton, SignUp, useUser } from "@clerk/clerk-react";
+import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import './App.css';
 import { synthesisTemplate } from './mockData';
 import type { Article, BadgeType, SavedArticle, StructuredSummary } from './types';
@@ -290,9 +293,30 @@ function AppShell() {
 
   return (
     <>
-      <Routes>
-        <Route path="/*" element={<MainLayout shared={shared} />} />
-      </Routes>
+      <AuthLoading>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh"
+        }}>
+          <p>Carregando autenticação...</p>
+        </div>
+      </AuthLoading>
+
+      <Unauthenticated>
+        <Routes>
+          <Route path="/login/*" element={<LoginPage />} />
+          <Route path="/signup/*" element={<SignUpPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Unauthenticated>
+
+      <Authenticated>
+        <Routes>
+          <Route path="/*" element={<MainLayout shared={shared} />} />
+        </Routes>
+      </Authenticated>
 
       {toast && <div className="toast">{toast}</div>}
       {summaryTarget && <QuickSummaryModal article={summaryTarget} onClose={() => setSummaryTarget(null)} onSave={() => saveArticle(summaryTarget.id)} />}
@@ -317,8 +341,47 @@ function AppShell() {
   );
 }
 
+function LoginPage() {
+  return (
+    <div className="login-screen">
+      <div className="login-card">
+        <h1>IBPR Research Assistant</h1>
+        <p>Assistente acadêmico para busca, análise e síntese de evidências.</p>
+
+        <SignIn
+          routing="path"
+          path="/login"
+          signUpUrl="/signup"
+          forceRedirectUrl="/dashboard"
+          fallbackRedirectUrl="/dashboard"
+        />
+      </div>
+    </div>
+  );
+}
+
+function SignUpPage() {
+  return (
+    <div className="login-screen">
+      <div className="login-card">
+        <h1>IBPR Research Assistant</h1>
+        <p>Assistente acadêmico para busca, análise e síntese de evidências.</p>
+
+        <SignUp
+          routing="path"
+          path="/signup"
+          signInUrl="/login"
+          forceRedirectUrl="/dashboard"
+          fallbackRedirectUrl="/dashboard"
+        />
+      </div>
+    </div>
+  );
+}
+
 function MainLayout({ shared }: { shared: any }) {
   const location = useLocation();
+  const { user } = useUser();
 
   return (
     <div className="app-frame">
@@ -338,8 +401,14 @@ function MainLayout({ shared }: { shared: any }) {
           </button>
 
           <span className="user-pill">
-            <User size={14} /> Acesso livre
+            <User size={14} /> {user?.primaryEmailAddress?.emailAddress || "Usuário"}
           </span>
+
+          <SignOutButton>
+            <button className="icon-btn">
+              <LogOut size={16} />
+            </button>
+          </SignOutButton>
         </header>
 
         <Routes>
