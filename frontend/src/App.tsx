@@ -129,6 +129,32 @@ function citationAPA(article: Article) {
   return `${first}${rest} (${article.year}). ${article.title}. ${article.journal}. ${doiOrUrl}`;
 }
 
+function buildStableArticleId(item: SearchApiArticle, idx: number): number {
+  const raw = [
+    item.doi ?? '',
+    item.url ?? '',
+    item.title ?? '',
+    String(item.year ?? ''),
+    item.journal ?? '',
+    String(idx),
+  ].join('|').toLowerCase();
+
+  let hash = 0;
+  for (let i = 0; i < raw.length; i += 1) {
+    hash = (hash * 31 + raw.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) + 1;
+}
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function mapBadges(type?: string, openAccess?: boolean): BadgeType[] {
   const badges: BadgeType[] = [];
   const normalizedType = (type ?? '').toLowerCase();
@@ -146,7 +172,7 @@ function mapApiArticle(item: SearchApiArticle, idx: number): Article {
   const year = item.year ?? new Date().getFullYear();
 
   return {
-    id: item.id ?? idx + 1,
+    id: buildStableArticleId(item, idx),
     title: item.title || 'Sem título',
     authors: (item.authors ?? []).map((a) => a.name ?? '').filter(Boolean),
     year,
@@ -199,7 +225,10 @@ function AppShell() {
   const [showSynthesisResult, setShowSynthesisResult] = useState(false);
 
   const savedArticles = useMemo(
-    () => appState.saved.map((item) => results.find((article) => article.id === item.articleId)).filter(Boolean) as Article[],
+    () =>
+      appState.saved
+        .map((item) => item.article ?? results.find((article) => article.id === item.articleId))
+        .filter(Boolean) as Article[],
     [appState.saved, results],
   );
 
@@ -213,10 +242,10 @@ function AppShell() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const saveArticle = (articleId: number) => {
+  const saveArticle = (article: Article) => {
     setAppState((prev) => {
-      if (prev.saved.some((item) => item.articleId === articleId)) return prev;
-      return { ...prev, saved: [...prev.saved, { articleId, note: '', savedAt: new Date().toISOString() }] };
+      if (prev.saved.some((item) => item.articleId === article.id)) return prev;
+      return { ...prev, saved: [...prev.saved, { articleId: article.id, note: '', savedAt: new Date().toISOString(), article }] };
     });
     setToast('Artigo salvo com sucesso');
   };
@@ -279,6 +308,7 @@ function AppShell() {
     savedArticles,
     updateNote,
     toast,
+    setToast,
     summaryTarget,
     setSummaryTarget,
     synthesisOpen,
@@ -319,7 +349,7 @@ function AppShell() {
       )}
 
       {toast && <div className="toast">{toast}</div>}
-      {summaryTarget && <QuickSummaryModal article={summaryTarget} onClose={() => setSummaryTarget(null)} onSave={() => saveArticle(summaryTarget.id)} />}
+      {summaryTarget && <QuickSummaryModal article={summaryTarget} onClose={() => setSummaryTarget(null)} onSave={() => saveArticle(summaryTarget)} toast={(message: string) => setToast(message)} />}
       {synthesisOpen && (
         <SynthesisModal
           articles={savedArticles}
@@ -565,8 +595,11 @@ function ResultsPage({ shared }: { shared: any }) {
             <ArticleCard
               key={article.id}
               article={article}
-              onSave={() => shared.saveArticle(article.id)}
+              onSave={() => shared.saveArticle(article)}
               onSummary={() => shared.setSummaryTarget(article)}
+              onCite={(citation) => {
+                void copyText(citation).then((ok) => shared.setToast(ok ? 'Citação copiada' : 'Não foi possível copiar citação'));
+              }}
               llmReason={recommendedReasons[article.id]}
             />
           ))}
@@ -648,7 +681,7 @@ function ResultsPage({ shared }: { shared: any }) {
   );
 }
 
-function ArticleCard({ article, onSave, onSummary, llmReason }: { article: Article; onSave: () => void; onSummary: () => void; llmReason?: string }) {
+function ArticleCard({ article, onSave, onSummary, onCite, llmReason }: { article: Article; onSave: () => void; onSummary: () => void; onCite: (citation: string) => void; llmReason?: string }) {
   return (
     <article className="article-card">
       <Link to={`/article/${article.id}`} className="title-link">{article.title}</Link>
@@ -660,7 +693,7 @@ function ArticleCard({ article, onSave, onSummary, llmReason }: { article: Artic
         <Link to={`/article/${article.id}`} className="ghost">Ver detalhes</Link>
         <button onClick={onSave}>Salvar</button>
         <button onClick={onSummary}>Resumo rapido</button>
-        <button onClick={() => navigator.clipboard.writeText(citationAPA(article))}>Citar</button>
+        <button onClick={() => onCite(citationAPA(article))}>Citar</button>
       </div>
     </article>
   );
@@ -720,7 +753,7 @@ function ArticlePage({ shared }: { shared: any }) {
         </div>
         {answer && <p className="llm-answer">{answer}</p>}
       </section>
-      <button onClick={() => shared.saveArticle(article.id)} className="primary">Salvar artigo</button>
+      <button onClick={() => shared.saveArticle(article)} className="primary">Salvar artigo</button>
     </section>
   );
 }
@@ -757,7 +790,7 @@ function CollectionsPage({ shared }: { shared: any }) {
   );
 }
 
-function QuickSummaryModal({ article, onClose, onSave }: { article: Article; onClose: () => void; onSave: () => void }) {
+function QuickSummaryModal({ article, onClose, onSave, toast }: { article: Article; onClose: () => void; onSave: () => void; toast: (message: string) => void }) {
   const [summary, setSummary] = useState<StructuredSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -810,10 +843,14 @@ function QuickSummaryModal({ article, onClose, onSave }: { article: Article; onC
         )}
         <div className="actions">
           <button
-            onClick={() =>
+            onClick={async () =>
               summary &&
-              navigator.clipboard.writeText(
-                `Objetivo: ${summary.objetivo}\nMetodologia: ${summary.metodologia}\nAchados: ${summary.achados}\nLimitacoes: ${summary.limitacoes}\nImplicacoes: ${summary.implicacoes}`,
+              toast(
+                (await copyText(
+                  `Objetivo: ${summary.objetivo}\nMetodologia: ${summary.metodologia}\nAchados: ${summary.achados}\nLimitacoes: ${summary.limitacoes}\nImplicacoes: ${summary.implicacoes}`,
+                ))
+                  ? 'Resumo copiado'
+                  : 'Não foi possível copiar resumo',
               )
             }
           >
@@ -892,7 +929,21 @@ function SynthesisModal({ articles, type, size, setType, setSize, articleCount, 
             <p><strong>Recomendacoes:</strong> {result?.recomendacoes ?? synthesisTemplate.recomendacoes}</p>
             <p><strong>Referencias (APA):</strong> {(result?.referencias_apa ?? []).join(' ; ') || 'geradas a partir dos artigos salvos.'}</p>
             <div className="actions">
-              <button onClick={() => toast('Sintese copiada')}>Copiar</button>
+              <button
+                onClick={async () => {
+                  const content = [
+                    `Introducao: ${result?.introducao ?? synthesisTemplate.introducao}`,
+                    `Convergencias: ${result?.convergencias ?? synthesisTemplate.convergencias}`,
+                    `Divergencias: ${result?.divergencias ?? synthesisTemplate.divergencias}`,
+                    `Lacunas: ${result?.lacunas ?? synthesisTemplate.lacunas}`,
+                    `Recomendacoes: ${result?.recomendacoes ?? synthesisTemplate.recomendacoes}`,
+                    `Referencias (APA): ${(result?.referencias_apa ?? []).join(' ; ') || 'geradas a partir dos artigos salvos.'}`,
+                  ].join('\n');
+                  toast((await copyText(content)) ? 'Sintese copiada' : 'Não foi possível copiar sintese');
+                }}
+              >
+                Copiar
+              </button>
               <button onClick={() => toast('Exportacao PDF simulada')}><FileDown size={14} /> Exportar PDF</button>
               <button onClick={() => toast('Exportacao DOCX simulada')}><FileText size={14} /> Exportar DOCX</button>
             </div>

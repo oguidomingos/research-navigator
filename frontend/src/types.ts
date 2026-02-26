@@ -20,6 +20,7 @@ export interface SavedArticle {
   articleId: number;
   note: string;
   savedAt: string;
+  article?: Article;
 }
 
 export interface StructuredSummary {
