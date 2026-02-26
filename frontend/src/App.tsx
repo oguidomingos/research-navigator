@@ -18,8 +18,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { SignIn, SignOutButton, SignUp, useUser } from "@clerk/clerk-react";
-import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
+import { SignIn, SignOutButton, SignUp, useAuth, useUser } from "@clerk/clerk-react";
 import './App.css';
 import { synthesisTemplate } from './mockData';
 import type { Article, BadgeType, SavedArticle, StructuredSummary } from './types';
@@ -179,6 +178,7 @@ function toLLMArticle(article: Article): LLMArticlePayload {
 }
 
 function AppShell() {
+  const { isLoaded, isSignedIn } = useAuth();
   const [appState, setAppState] = usePersistedState();
   const [results, setResults] = useState<Article[]>(() => {
     const raw = localStorage.getItem(RESULTS_STORAGE);
@@ -293,7 +293,7 @@ function AppShell() {
 
   return (
     <>
-      <AuthLoading>
+      {!isLoaded && (
         <div style={{
           display: "flex",
           alignItems: "center",
@@ -302,21 +302,21 @@ function AppShell() {
         }}>
           <p>Carregando autenticação...</p>
         </div>
-      </AuthLoading>
+      )}
 
-      <Unauthenticated>
+      {isLoaded && !isSignedIn && (
         <Routes>
           <Route path="/login/*" element={<LoginPage />} />
           <Route path="/signup/*" element={<SignUpPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Unauthenticated>
+      )}
 
-      <Authenticated>
+      {isLoaded && isSignedIn && (
         <Routes>
           <Route path="/*" element={<MainLayout shared={shared} />} />
         </Routes>
-      </Authenticated>
+      )}
 
       {toast && <div className="toast">{toast}</div>}
       {summaryTarget && <QuickSummaryModal article={summaryTarget} onClose={() => setSummaryTarget(null)} onSave={() => saveArticle(summaryTarget.id)} />}
