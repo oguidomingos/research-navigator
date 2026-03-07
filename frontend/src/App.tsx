@@ -104,6 +104,11 @@ interface ThesysChatMessage {
   content: string;
 }
 
+function isThesysC1Response(content: string) {
+  const normalized = content.trim();
+  return normalized.startsWith('<content thesys="true">') || normalized.includes('"component"');
+}
+
 const initialState: AppState = {
   darkMode: false,
   saved: [],
@@ -831,7 +836,7 @@ function ResearchAssistantPage({ shared }: { shared: any }) {
         <div className="assistant-messages">
           {messages.map((message) => (
             <div key={message.id} className={`assistant-message ${message.role}`}>
-              {message.role === 'assistant' ? (
+              {message.role === 'assistant' && isThesysC1Response(message.content) ? (
                 <C1Component
                   c1Response={message.content}
                   isStreaming={false}
