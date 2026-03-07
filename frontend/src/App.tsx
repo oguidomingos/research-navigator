@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useParams, useNavigate } from 'react-router-dom';
+import { C1Component } from '@thesysai/genui-sdk';
 import {
   BookMarked,
   ChevronDown,
@@ -95,6 +96,12 @@ interface LLMArticlePayload {
   methodology?: string;
   limitations: string[];
   conclusions: string[];
+}
+
+interface ThesysChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 const initialState: AppState = {
@@ -419,6 +426,7 @@ function MainLayout({ shared }: { shared: any }) {
         <div className="logo">IBPR Research</div>
         <nav>
           <Link to="/dashboard" className={location.pathname.startsWith('/dashboard') ? 'active' : ''}><LayoutDashboard size={16} />Buscar</Link>
+          <Link to="/assistant" className={location.pathname.startsWith('/assistant') ? 'active' : ''}><MessageCircle size={16} />Chat de Pesquisa</Link>
           <Link to="/collections" className={location.pathname.startsWith('/collections') ? 'active' : ''}><BookMarked size={16} />Minhas Colecoes</Link>
           <div className="muted-item"><History size={16} />Historico</div>
           <div className="muted-item"><Settings size={16} />Configuracoes</div>
@@ -444,6 +452,7 @@ function MainLayout({ shared }: { shared: any }) {
         <Routes>
           <Route path="/dashboard" element={<DashboardPage shared={shared} />} />
           <Route path="/results" element={<ResultsPage shared={shared} />} />
+          <Route path="/assistant" element={<ResearchAssistantPage shared={shared} />} />
           <Route path="/article/:id" element={<ArticlePage shared={shared} />} />
           <Route path="/collections" element={<CollectionsPage shared={shared} />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -696,6 +705,182 @@ function ArticleCard({ article, onSave, onSummary, onCite, llmReason }: { articl
         <button onClick={() => onCite(citationAPA(article))}>Citar</button>
       </div>
     </article>
+  );
+}
+
+function ResearchAssistantPage({ shared }: { shared: any }) {
+  const quickPrompts = [
+    'Quais artigos desta busca eu devo ler primeiro e por quê?',
+    'Compare os principais achados dos resultados mais relevantes.',
+    'Que lacunas de pesquisa aparecem nesses artigos?',
+    'Monte uma resposta curta para usar em uma revisão narrativa.',
+  ];
+  const [messages, setMessages] = useState<ThesysChatMessage[]>([
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Posso analisar os resultados atuais, comparar artigos salvos e responder perguntas sobre a pesquisa em andamento.',
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const sendMessage = async (prompt: string) => {
+    const trimmed = prompt.trim();
+    if (!trimmed || sending) return;
+
+    const nextUserMessage: ThesysChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: trimmed,
+    };
+
+    const nextHistory = [...messages, nextUserMessage]
+      .filter((message) => message.id !== 'welcome')
+      .map(({ role, content }) => ({ role, content }));
+
+    setMessages((current) => [...current, nextUserMessage]);
+    setInput('');
+    setSending(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/thesys/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: trimmed,
+          language: 'pt-BR',
+          search_query: shared.query,
+          results: shared.results.map((article: Article) => toLLMArticle(article)),
+          saved_articles: shared.savedArticles.map((article: Article) => toLLMArticle(article)),
+          history: nextHistory,
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Falha ao consultar Thesys');
+      }
+
+      const data = await response.json();
+      setMessages((current) => [
+        ...current,
+        {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.c1_response || 'Sem resposta do modelo.',
+        },
+      ]);
+    } catch {
+      setMessages((current) => [
+        ...current,
+        {
+          id: `assistant-error-${Date.now()}`,
+          role: 'assistant',
+          content: 'Nao foi possivel consultar o assistente agora. Verifique THESYS_API_KEY no backend e tente novamente.',
+        },
+      ]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const contextSummary = useMemo(() => {
+    if (shared.results.length === 0) {
+      return 'Nenhum resultado carregado. Faça uma busca para dar contexto ao chat.';
+    }
+
+    const latestYears = shared.results
+      .map((article: Article) => article.year)
+      .filter((year: number) => Number.isFinite(year))
+      .sort((a: number, b: number) => b - a)
+      .slice(0, 3);
+
+    return [
+      shared.query ? `Busca atual: "${shared.query}"` : 'Busca atual sem termo definido.',
+      `${shared.results.length} resultados disponíveis.`,
+      `${shared.savedArticles.length} artigos salvos.`,
+      latestYears.length ? `Anos mais recentes no conjunto: ${latestYears.join(', ')}.` : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }, [shared.query, shared.results, shared.savedArticles.length]);
+
+  return (
+    <section className="page assistant-layout">
+      <div className="assistant-panel">
+        <div className="assistant-context-card">
+          <div className="assistant-kicker"><Sparkles size={14} /> Contexto da pesquisa</div>
+          <h2>Chat de Pesquisa</h2>
+          <p>{contextSummary}</p>
+        </div>
+
+        <div className="assistant-context-card">
+          <h3>Perguntas rápidas</h3>
+          <div className="assistant-prompt-list">
+            {quickPrompts.map((prompt) => (
+              <button key={prompt} type="button" onClick={() => void sendMessage(prompt)} disabled={sending}>
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="assistant-chat-shell">
+        <div className="assistant-messages">
+          {messages.map((message) => (
+            <div key={message.id} className={`assistant-message ${message.role}`}>
+              {message.role === 'assistant' ? (
+                <C1Component
+                  c1Response={message.content}
+                  isStreaming={false}
+                  onAction={(event) => {
+                    const params = event?.params ?? {};
+                    const followUp =
+                      params.llmFriendlyMessage ||
+                      params.humanFriendlyMessage ||
+                      'Continue a análise com base no mesmo contexto.';
+                    void sendMessage(String(followUp));
+                  }}
+                />
+              ) : (
+                <p>{message.content}</p>
+              )}
+            </div>
+          ))}
+
+          {sending && (
+            <div className="assistant-message assistant">
+              <div className="assistant-loading">
+                <div className="llm-progress-dot" />
+                <span>Consultando o modelo da Thesys...</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <form
+          className="assistant-composer"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void sendMessage(input);
+          }}
+        >
+          <textarea
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="Pergunte sobre os artigos, peça comparação, síntese, critérios de priorização ou próximos passos."
+          />
+          <div className="assistant-composer-actions">
+            <span className="meta">O chat usa os resultados atuais e os artigos salvos como contexto.</span>
+            <button type="submit" className="primary" disabled={sending || !input.trim()}>
+              {sending ? 'Enviando...' : 'Perguntar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
   );
 }
 

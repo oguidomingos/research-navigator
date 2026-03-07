@@ -1,7 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { ThemeProvider } from "@crayonai/react-ui";
 import App from "./App.tsx";
 import "./index.css";
+import "@crayonai/react-ui/styles/index.css";
+import "../node_modules/@thesysai/genui-sdk/dist/genui-sdk.css";
 
 import { ClerkProvider } from "@clerk/clerk-react";
 
@@ -29,7 +32,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       signUpForceRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
     >
-      <App />
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
     </ClerkProvider>
   </React.StrictMode>
 )

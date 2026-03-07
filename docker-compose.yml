@@ -27,6 +27,9 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-5.1-mini}
+      THESYS_API_KEY: ${THESYS_API_KEY}
+      THESYS_BASE_URL: ${THESYS_BASE_URL:-https://api.thesys.dev/v1/embed}
+      THESYS_MODEL: ${THESYS_MODEL:-c1/openai/gpt-5/v-20251230}
       SECRET_KEY: ${SECRET_KEY:-your-secret-key}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
     ports:

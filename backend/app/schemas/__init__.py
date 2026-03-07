@@ -197,3 +197,22 @@ class LLMRecommendResultsResponse(BaseModel):
     summary: str
     suggested_filters: Dict[str, Any] = {}
     raw: str
+
+
+class ThesysChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ThesysChatRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=4000)
+    language: str = "pt-BR"
+    search_query: Optional[str] = None
+    results: List[LLMArticleInput] = []
+    saved_articles: List[LLMArticleInput] = []
+    history: List[ThesysChatMessage] = []
+
+
+class ThesysChatResponse(BaseModel):
+    c1_response: str
+    model: str

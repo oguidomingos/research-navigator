@@ -1,7 +1,7 @@
 """API v1 routes"""
 
 from fastapi import APIRouter
-from app.api.v1.endpoints import search, articles, collections, summary, export, health, llm
+from app.api.v1.endpoints import search, articles, collections, summary, export, health, llm, thesys
 
 api_router = APIRouter()
 api_router.include_router(health.router, prefix="/health", tags=["Health"])
@@ -11,3 +11,4 @@ api_router.include_router(collections.router, prefix="/collections", tags=["Coll
 api_router.include_router(summary.router, prefix="/summary", tags=["Summary"])
 api_router.include_router(export.router, prefix="/export", tags=["Export"])
 api_router.include_router(llm.router, prefix="/llm", tags=["LLM"])
+api_router.include_router(thesys.router, prefix="/thesys", tags=["Thesys"])

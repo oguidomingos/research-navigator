@@ -6,5 +6,6 @@ from app.services.collection_service import CollectionService
 from app.services.summary_service import SummaryService
 from app.services.export_service import ExportService
 from app.services.llm_service import LLMService
+from app.services.thesys_service import ThesysService
 
-__all__ = ["SearchService", "ArticleService", "CollectionService", "SummaryService", "ExportService", "LLMService"]
+__all__ = ["SearchService", "ArticleService", "CollectionService", "SummaryService", "ExportService", "LLMService", "ThesysService"]
