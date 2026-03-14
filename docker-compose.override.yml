@@ -1,0 +1,12 @@
+services:
+  db:
+    ports:
+      - "55432:5432"   # evita conflito com 5432 já em uso
+
+  redis:
+    ports:
+      - "56379:6379"   # evita conflito com 6379 já em uso
+
+  backend:
+    ports:
+      - "8002:8000"    # mantém backend no host 8002

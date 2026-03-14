@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   db:
+    restart: unless-stopped
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: research
@@ -9,15 +10,13 @@ services:
       POSTGRES_DB: research_navigator
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
 
   redis:
+    restart: unless-stopped
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
 
   backend:
+    restart: unless-stopped
     build: ./backend
     environment:
       DATABASE_URL: postgresql+asyncpg://research:research123@db:5432/research_navigator
@@ -32,8 +31,11 @@ services:
       THESYS_MODEL: ${THESYS_MODEL:-c1/openai/gpt-5/v-20251230}
       SECRET_KEY: ${SECRET_KEY:-your-secret-key}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      THESYS_API_KEY: ${THESYS_API_KEY}
+      THESYS_BASE_URL: ${THESYS_BASE_URL:-https://api.thesys.dev/v1/embed}
+      THESYS_MODEL: ${THESYS_MODEL:-c1/openai/gpt-5/v-20251230}
     ports:
-      - "8000:8000"
+      - "8002:8000"
     depends_on:
       - db
       - redis

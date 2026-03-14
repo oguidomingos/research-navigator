@@ -199,20 +199,38 @@ class LLMRecommendResultsResponse(BaseModel):
     raw: str
 
 
+<<<<<<< HEAD
+=======
+# --- Thesys Chat ---
+
+>>>>>>> 93f9227 (feat(backend): add Thesys chat endpoint + fix docker env passthrough)
 class ThesysChatMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
 
 
 class ThesysChatRequest(BaseModel):
+<<<<<<< HEAD
     prompt: str = Field(..., min_length=1, max_length=4000)
     language: str = "pt-BR"
     search_query: Optional[str] = None
     results: List[LLMArticleInput] = []
     saved_articles: List[LLMArticleInput] = []
     history: List[ThesysChatMessage] = []
+=======
+    prompt: str = Field(..., min_length=1)
+    language: str = "pt-BR"
+    search_query: Optional[str] = None
+    history: List[ThesysChatMessage] = []
+    results: List[LLMArticleInput] = []
+    saved_articles: List[LLMArticleInput] = []
+>>>>>>> 93f9227 (feat(backend): add Thesys chat endpoint + fix docker env passthrough)
 
 
 class ThesysChatResponse(BaseModel):
     c1_response: str
+<<<<<<< HEAD
     model: str
+=======
+    model: str = "thesys"
+>>>>>>> 93f9227 (feat(backend): add Thesys chat endpoint + fix docker env passthrough)

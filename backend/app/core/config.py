@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gpt-4-turbo-preview"
     LLM_MAX_TOKENS: int = 4000
     
+    # Thesys
+    THESYS_API_KEY: str = ""
+    THESYS_BASE_URL: str = "https://api.thesys.dev/v1/embed"
+    THESYS_MODEL: str = "c1/openai/gpt-5/v-20251230"
+    
     # API Keys
     OPENALEX_API_KEY: str = ""
     SEMANTIC_SCHOLAR_API_KEY: str = ""
