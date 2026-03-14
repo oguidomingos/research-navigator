@@ -22,13 +22,14 @@ import {
 import { SignIn, SignOutButton, SignUp, useAuth, useUser } from "@clerk/clerk-react";
 import './App.css';
 import { synthesisTemplate } from './mockData';
-import type { Article, BadgeType, SavedArticle, StructuredSummary } from './types';
+import type { Article, BadgeType, ResearchCollection, SavedArticle, StructuredSummary } from './types';
 
 type SynthesisType = 'Revisao comparativa' | 'Mapa de evidencias' | 'Aplicacao clinica';
 type SynthesisSize = 'Curto' | 'Medio' | 'Longo';
 
 const APP_STORAGE = 'ibpr_mvp_state';
 const RESULTS_STORAGE = 'ibpr_real_results';
+const DEFAULT_COLLECTION_ID = 'collection-default';
 
 function resolveApiBaseUrl() {
   const raw = String(import.meta.env.VITE_API_BASE_URL ?? '');
@@ -69,6 +70,8 @@ const API_BASE = resolveApiBaseUrl();
 interface AppState {
   darkMode: boolean;
   saved: SavedArticle[];
+  collections: ResearchCollection[];
+  activeCollectionId: string;
   history: string[];
 }
 
@@ -112,15 +115,37 @@ function isThesysC1Response(content: string) {
 const initialState: AppState = {
   darkMode: false,
   saved: [],
+  collections: [
+    {
+      id: DEFAULT_COLLECTION_ID,
+      name: 'Coleção principal',
+      articleIds: [],
+      createdAt: new Date().toISOString(),
+    },
+  ],
+  activeCollectionId: DEFAULT_COLLECTION_ID,
   history: [],
 };
+
+function normalizeAppState(raw: AppState): AppState {
+  const collections = Array.isArray(raw.collections) && raw.collections.length > 0
+    ? raw.collections
+    : initialState.collections;
+  const activeCollectionExists = collections.some((collection) => collection.id === raw.activeCollectionId);
+  return {
+    ...initialState,
+    ...raw,
+    collections,
+    activeCollectionId: activeCollectionExists ? raw.activeCollectionId : collections[0].id,
+  };
+}
 
 function usePersistedState() {
   const [state, setState] = useState<AppState>(() => {
     const raw = localStorage.getItem(APP_STORAGE);
     if (!raw) return initialState;
     try {
-      return { ...initialState, ...JSON.parse(raw) } as AppState;
+      return normalizeAppState({ ...initialState, ...JSON.parse(raw) } as AppState);
     } catch {
       return initialState;
     }
@@ -236,12 +261,19 @@ function AppShell() {
   const [synthesisSize, setSynthesisSize] = useState<SynthesisSize>('Medio');
   const [showSynthesisResult, setShowSynthesisResult] = useState(false);
 
+  const activeCollection = useMemo(
+    () => appState.collections.find((collection) => collection.id === appState.activeCollectionId) ?? appState.collections[0],
+    [appState.collections, appState.activeCollectionId],
+  );
+
   const savedArticles = useMemo(
     () =>
-      appState.saved
-        .map((item) => item.article ?? results.find((article) => article.id === item.articleId))
+      (activeCollection?.articleIds ?? [])
+        .map((articleId) => appState.saved.find((item) => item.articleId === articleId))
+        .filter(Boolean)
+        .map((item) => item?.article ?? results.find((article) => article.id === item?.articleId))
         .filter(Boolean) as Article[],
-    [appState.saved, results],
+    [activeCollection, appState.saved, results],
   );
 
   useEffect(() => {
@@ -254,16 +286,34 @@ function AppShell() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const saveArticle = (article: Article) => {
+  const saveArticle = (article: Article, collectionId?: string) => {
+    const targetCollectionId = collectionId ?? activeCollection?.id ?? DEFAULT_COLLECTION_ID;
     setAppState((prev) => {
-      if (prev.saved.some((item) => item.articleId === article.id)) return prev;
-      return { ...prev, saved: [...prev.saved, { articleId: article.id, note: '', savedAt: new Date().toISOString(), article }] };
+      const alreadySaved = prev.saved.some((item) => item.articleId === article.id);
+      const nextSaved = alreadySaved
+        ? prev.saved.map((item) => (item.articleId === article.id ? { ...item, article } : item))
+        : [...prev.saved, { articleId: article.id, note: '', savedAt: new Date().toISOString(), article }];
+      const nextCollections = prev.collections.map((collection) => {
+        if (collection.id !== targetCollectionId) return collection;
+        if (collection.articleIds.includes(article.id)) return collection;
+        return { ...collection, articleIds: [...collection.articleIds, article.id] };
+      });
+      return { ...prev, saved: nextSaved, collections: nextCollections };
     });
-    setToast('Artigo salvo com sucesso');
+    const targetName = appState.collections.find((collection) => collection.id === targetCollectionId)?.name ?? 'coleção';
+    setToast(`Artigo salvo em "${targetName}"`);
   };
 
-  const removeArticle = (articleId: number) => {
-    setAppState((prev) => ({ ...prev, saved: prev.saved.filter((item) => item.articleId !== articleId) }));
+  const removeArticle = (articleId: number, collectionId?: string) => {
+    const targetCollectionId = collectionId ?? activeCollection?.id ?? DEFAULT_COLLECTION_ID;
+    setAppState((prev) => ({
+      ...prev,
+      collections: prev.collections.map((collection) =>
+        collection.id === targetCollectionId
+          ? { ...collection, articleIds: collection.articleIds.filter((id) => id !== articleId) }
+          : collection
+      ),
+    }));
     setToast('Artigo removido da coleção');
   };
 
@@ -272,6 +322,55 @@ function AppShell() {
       ...prev,
       saved: prev.saved.map((item) => (item.articleId === articleId ? { ...item, note } : item)),
     }));
+  };
+
+  const createCollection = (name: string) => {
+    const normalized = name.trim();
+    if (!normalized) {
+      setToast('Informe um nome para a coleção');
+      return;
+    }
+    const newCollection: ResearchCollection = {
+      id: `collection-${Date.now()}`,
+      name: normalized,
+      articleIds: [],
+      createdAt: new Date().toISOString(),
+    };
+    setAppState((prev) => ({
+      ...prev,
+      collections: [...prev.collections, newCollection],
+      activeCollectionId: newCollection.id,
+    }));
+    setToast('Coleção criada');
+  };
+
+  const renameCollection = (collectionId: string, name: string) => {
+    const normalized = name.trim();
+    if (!normalized) {
+      setToast('Nome inválido para coleção');
+      return;
+    }
+    setAppState((prev) => ({
+      ...prev,
+      collections: prev.collections.map((collection) =>
+        collection.id === collectionId ? { ...collection, name: normalized } : collection
+      ),
+    }));
+    setToast('Coleção renomeada');
+  };
+
+  const deleteCollection = (collectionId: string) => {
+    setAppState((prev) => {
+      if (prev.collections.length <= 1) return prev;
+      const nextCollections = prev.collections.filter((collection) => collection.id !== collectionId);
+      const nextActive = prev.activeCollectionId === collectionId ? nextCollections[0].id : prev.activeCollectionId;
+      return { ...prev, collections: nextCollections, activeCollectionId: nextActive };
+    });
+    setToast('Coleção removida');
+  };
+
+  const setActiveCollection = (collectionId: string) => {
+    setAppState((prev) => ({ ...prev, activeCollectionId: collectionId }));
   };
 
   const runSearch = async (term: string) => {
@@ -318,7 +417,12 @@ function AppShell() {
     saveArticle,
     removeArticle,
     savedArticles,
+    activeCollection,
     updateNote,
+    createCollection,
+    renameCollection,
+    deleteCollection,
+    setActiveCollection,
     toast,
     setToast,
     summaryTarget,
@@ -966,11 +1070,65 @@ function ArticlePage({ shared }: { shared: any }) {
 }
 
 function CollectionsPage({ shared }: { shared: any }) {
+  const [collectionName, setCollectionName] = useState('');
+
   return (
     <section className="page">
       <div className="page-inline-header">
         <h2>Minhas Colecoes</h2>
         <button className="primary" onClick={() => shared.setSynthesisOpen(true)} disabled={shared.savedArticles.length < 2}><Sparkles size={16} /> Gerar sintese</button>
+      </div>
+
+      <div className="filters-panel">
+        <label>Nova coleção</label>
+        <div className="actions">
+          <input
+            value={collectionName}
+            onChange={(e) => setCollectionName(e.target.value)}
+            placeholder="Ex: Revisão - Fogo no Cerrado"
+          />
+          <button
+            onClick={() => {
+              shared.createCollection(collectionName);
+              setCollectionName('');
+            }}
+          >
+            Criar
+          </button>
+        </div>
+
+        <div className="chips">
+          {shared.appState.collections.map((collection: ResearchCollection) => (
+            <button
+              key={collection.id}
+              className={shared.activeCollection?.id === collection.id ? 'active' : ''}
+              onClick={() => shared.setActiveCollection(collection.id)}
+            >
+              {collection.name} ({collection.articleIds.length})
+            </button>
+          ))}
+        </div>
+
+        {shared.activeCollection && (
+          <div className="actions">
+            <button
+              className="ghost"
+              onClick={() => {
+                const nextName = window.prompt('Novo nome da coleção:', shared.activeCollection.name);
+                if (nextName) shared.renameCollection(shared.activeCollection.id, nextName);
+              }}
+            >
+              Renomear ativa
+            </button>
+            <button
+              className="danger"
+              onClick={() => shared.deleteCollection(shared.activeCollection.id)}
+              disabled={shared.appState.collections.length <= 1}
+            >
+              Excluir ativa
+            </button>
+          </div>
+        )}
       </div>
 
       {shared.savedArticles.length === 0 ? (
@@ -986,7 +1144,7 @@ function CollectionsPage({ shared }: { shared: any }) {
                 <label>Nota pessoal<textarea value={saved?.note ?? ''} onChange={(e) => shared.updateNote(article.id, e.target.value)} placeholder="Escreva um insight clinico ou metodologico..." /></label>
                 <div className="actions">
                   <button onClick={() => shared.setSynthesisOpen(true)}>Gerar sintese</button>
-                  <button className="danger" onClick={() => shared.removeArticle(article.id)}><Trash2 size={14} /> Remover</button>
+                  <button className="danger" onClick={() => shared.removeArticle(article.id, shared.activeCollection?.id)}><Trash2 size={14} /> Remover</button>
                 </div>
               </article>
             );

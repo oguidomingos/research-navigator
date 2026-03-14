@@ -23,6 +23,13 @@ export interface SavedArticle {
   article?: Article;
 }
 
+export interface ResearchCollection {
+  id: string;
+  name: string;
+  articleIds: number[];
+  createdAt: string;
+}
+
 export interface StructuredSummary {
   objetivo: string;
   metodologia: string;
