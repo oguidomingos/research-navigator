@@ -256,6 +256,8 @@ function AppShell() {
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [summaryTarget, setSummaryTarget] = useState<Article | null>(null);
+  const [pendingSaveArticle, setPendingSaveArticle] = useState<Article | null>(null);
+  const [saveCollectionId, setSaveCollectionId] = useState<string>(DEFAULT_COLLECTION_ID);
   const [synthesisOpen, setSynthesisOpen] = useState(false);
   const [synthesisType, setSynthesisType] = useState<SynthesisType>('Revisao comparativa');
   const [synthesisSize, setSynthesisSize] = useState<SynthesisSize>('Medio');
@@ -373,6 +375,17 @@ function AppShell() {
     setAppState((prev) => ({ ...prev, activeCollectionId: collectionId }));
   };
 
+  const requestSaveArticle = (article: Article) => {
+    setPendingSaveArticle(article);
+    setSaveCollectionId(activeCollection?.id ?? DEFAULT_COLLECTION_ID);
+  };
+
+  const confirmSaveArticle = () => {
+    if (!pendingSaveArticle) return;
+    saveArticle(pendingSaveArticle, saveCollectionId);
+    setPendingSaveArticle(null);
+  };
+
   const runSearch = async (term: string) => {
     const normalized = term.trim();
     if (!normalized) return;
@@ -415,6 +428,7 @@ function AppShell() {
     isLoading,
     runSearch,
     saveArticle,
+    requestSaveArticle,
     removeArticle,
     savedArticles,
     activeCollection,
@@ -465,7 +479,29 @@ function AppShell() {
       )}
 
       {toast && <div className="toast">{toast}</div>}
-      {summaryTarget && <QuickSummaryModal article={summaryTarget} onClose={() => setSummaryTarget(null)} onSave={() => saveArticle(summaryTarget)} toast={(message: string) => setToast(message)} />}
+      {summaryTarget && <QuickSummaryModal article={summaryTarget} onClose={() => setSummaryTarget(null)} onSave={() => requestSaveArticle(summaryTarget)} toast={(message: string) => setToast(message)} />}
+      {pendingSaveArticle && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <h3>Salvar em qual coleção?</h3>
+            <p className="meta">{pendingSaveArticle.title}</p>
+            <label>
+              Coleção
+              <select value={saveCollectionId} onChange={(e) => setSaveCollectionId(e.target.value)}>
+                {appState.collections.map((collection) => (
+                  <option key={collection.id} value={collection.id}>
+                    {collection.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="actions">
+              <button onClick={confirmSaveArticle} className="primary">Salvar</button>
+              <button className="ghost" onClick={() => setPendingSaveArticle(null)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
       {synthesisOpen && (
         <SynthesisModal
           articles={savedArticles}
@@ -713,7 +749,7 @@ function ResultsPage({ shared }: { shared: any }) {
             <ArticleCard
               key={article.id}
               article={article}
-              onSave={() => shared.saveArticle(article)}
+              onSave={() => shared.requestSaveArticle(article)}
               onSummary={() => shared.setSummaryTarget(article)}
               onCite={(citation) => {
                 void copyText(citation).then((ok) => shared.setToast(ok ? 'Citação copiada' : 'Não foi possível copiar citação'));
@@ -1064,7 +1100,7 @@ function ArticlePage({ shared }: { shared: any }) {
         </div>
         {answer && <p className="llm-answer">{answer}</p>}
       </section>
-      <button onClick={() => shared.saveArticle(article)} className="primary">Salvar artigo</button>
+      <button onClick={() => shared.requestSaveArticle(article)} className="primary">Salvar artigo</button>
     </section>
   );
 }
