@@ -1107,6 +1107,14 @@ function ArticlePage({ shared }: { shared: any }) {
 
 function CollectionsPage({ shared }: { shared: any }) {
   const [collectionName, setCollectionName] = useState('');
+  const savedById = new Map<number, SavedArticle>(
+    shared.appState.saved.map((item: SavedArticle) => [item.articleId, item]),
+  );
+  const articleById = new Map<number, Article>(
+    shared.appState.saved
+      .filter((item: SavedArticle) => Boolean(item.article))
+      .map((item: SavedArticle) => [item.articleId, item.article as Article]),
+  );
 
   return (
     <section className="page">
@@ -1187,6 +1195,47 @@ function CollectionsPage({ shared }: { shared: any }) {
           })}
         </div>
       )}
+
+      <section className="history" style={{ marginTop: 16 }}>
+        <h4>Todas as coleções</h4>
+        {shared.appState.collections.map((collection: ResearchCollection) => {
+          const collectionArticles = collection.articleIds
+            .map((articleId: number) => articleById.get(articleId))
+            .filter(Boolean) as Article[];
+
+          return (
+            <div key={collection.id} className="detail-box" style={{ marginBottom: 12 }}>
+              <div className="page-inline-header">
+                <h3>{collection.name}</h3>
+                <span className="meta">{collectionArticles.length} artigos</span>
+              </div>
+
+              {collectionArticles.length === 0 ? (
+                <div className="empty-state">Coleção sem artigos.</div>
+              ) : (
+                <div className="cards-list">
+                  {collectionArticles.map((article: Article) => {
+                    const saved = savedById.get(article.id);
+                    return (
+                      <article className="article-card" key={`${collection.id}-${article.id}`}>
+                        <h3>{article.title}</h3>
+                        <p className="meta">{article.authors.join(', ') || 'Autores não informados'} • {article.year}</p>
+                        {saved?.note && <p>{saved.note}</p>}
+                        <div className="actions">
+                          <button onClick={() => shared.setActiveCollection(collection.id)}>Abrir coleção</button>
+                          <button className="danger" onClick={() => shared.removeArticle(article.id, collection.id)}>
+                            <Trash2 size={14} /> Remover
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </section>
     </section>
   );
 }
