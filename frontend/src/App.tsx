@@ -763,8 +763,24 @@ function ResearchAssistantPage({ shared }: { shared: any }) {
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Falha ao consultar Thesys');
+        let detail = '';
+        try {
+          const payload = await response.json();
+          detail = String(payload?.detail ?? '').trim();
+        } catch {
+          detail = (await response.text()).trim();
+        }
+
+        if (response.status === 404) {
+          throw new Error('Endpoint /thesys/chat não está disponível no backend da VPS (deploy antigo ou rota não publicada).');
+        }
+        if (response.status === 503) {
+          throw new Error(detail || 'Thesys não configurado no backend (THESYS_API_KEY ausente).');
+        }
+        if (response.status === 502) {
+          throw new Error(detail || 'Falha no provedor TheSys/OpenAI no backend.');
+        }
+        throw new Error(detail || `Falha ao consultar Thesys (HTTP ${response.status}).`);
       }
 
       const data = await response.json();
@@ -776,13 +792,14 @@ function ResearchAssistantPage({ shared }: { shared: any }) {
           content: data.c1_response || 'Sem resposta do modelo.',
         },
       ]);
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível consultar o assistente agora.';
       setMessages((current) => [
         ...current,
         {
           id: `assistant-error-${Date.now()}`,
           role: 'assistant',
-          content: 'Nao foi possivel consultar o assistente agora. Verifique THESYS_API_KEY no backend e tente novamente.',
+          content: message,
         },
       ]);
     } finally {
