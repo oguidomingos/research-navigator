@@ -173,12 +173,22 @@ textarea { min-height: 90px; resize: vertical; }
   right: 18px;
   bottom: 132px;
   width: min(420px, 92vw);
+  max-height: min(70dvh, 560px);
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow);
   padding: 12px;
   z-index: 106;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.chat-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 .chat-popup h4 { margin: 0 0 6px; }
 .chat-popup textarea { min-height: 90px; }
@@ -241,6 +251,7 @@ textarea { min-height: 90px; resize: vertical; }
     radial-gradient(circle at top right, rgba(107, 191, 124, 0.12), transparent 28%),
     linear-gradient(180deg, var(--panel-soft), var(--panel));
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .assistant-message {
   max-width: min(820px, 100%);
@@ -259,6 +270,23 @@ textarea { min-height: 90px; resize: vertical; }
 .assistant-message.assistant {
   background: var(--panel);
   border: 1px solid var(--border);
+  width: 100%;
+  overflow: hidden;
+}
+.assistant-message.assistant p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.thesys-response-shell {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.thesys-response-shell > * {
+  max-width: 100% !important;
 }
 .assistant-loading {
   display: inline-flex;
@@ -308,8 +336,28 @@ textarea { min-height: 90px; resize: vertical; }
 }
 @keyframes pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(11, 20, 14, 0.48); display: grid; place-items: center; z-index: 100; }
-.modal { width: min(680px, 92vw); background: var(--panel); border-radius: 14px; padding: 18px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 20, 14, 0.48);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.modal {
+  width: min(680px, 92vw);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
 .modal.large { width: min(760px, 94vw); }
 .synthesis-output { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
 
@@ -337,7 +385,11 @@ textarea { min-height: 90px; resize: vertical; }
   .results-toolbar { grid-template-columns: 1fr; }
   .assistant-layout { grid-template-columns: 1fr; }
   .assistant-chat-shell { min-height: auto; }
+  .assistant-messages { padding: 12px; }
+  .assistant-message { padding: 12px; }
   .assistant-composer-actions { flex-direction: column; align-items: stretch; }
   .chat-popup { right: 10px; left: 10px; width: auto; bottom: 90px; }
+  .modal-backdrop { place-items: end center; padding: 10px; }
+  .modal, .modal.large { width: 100%; max-height: calc(100dvh - 20px); border-radius: 14px 14px 10px 10px; }
   .chat-fab { right: 10px; bottom: 18px; }
 }

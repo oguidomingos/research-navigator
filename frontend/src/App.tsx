@@ -481,8 +481,8 @@ function AppShell() {
       {toast && <div className="toast">{toast}</div>}
       {summaryTarget && <QuickSummaryModal article={summaryTarget} onClose={() => setSummaryTarget(null)} onSave={() => requestSaveArticle(summaryTarget)} toast={(message: string) => setToast(message)} />}
       {pendingSaveArticle && (
-        <div className="modal-backdrop">
-          <div className="modal">
+        <div className="modal-backdrop" onClick={() => setPendingSaveArticle(null)}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h3>Salvar em qual coleção?</h3>
             <p className="meta">{pendingSaveArticle.title}</p>
             <label>
@@ -764,7 +764,10 @@ function ResultsPage({ shared }: { shared: any }) {
       </button>
       {chatOpen && (
         <div className="chat-popup">
-          <h4>Selecionar Artigos com IA</h4>
+          <div className="chat-popup-header">
+            <h4>Selecionar Artigos com IA</h4>
+            <button type="button" className="ghost" onClick={() => setChatOpen(false)}>Fechar</button>
+          </div>
           <p className="meta">Descreva seu critério. Ex: \"quero estudos de revisão recentes e com foco clínico\".</p>
           <textarea value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Escreva seu pedido..." />
           <div className="actions">
@@ -827,7 +830,6 @@ function ResultsPage({ shared }: { shared: any }) {
             >
               {chatLoading ? 'Analisando...' : 'Analisar resultados'}
             </button>
-            <button onClick={() => setChatOpen(false)}>Fechar</button>
           </div>
         </div>
       )}
@@ -994,18 +996,20 @@ function ResearchAssistantPage({ shared }: { shared: any }) {
           {messages.map((message) => (
             <div key={message.id} className={`assistant-message ${message.role}`}>
               {message.role === 'assistant' && isThesysC1Response(message.content) ? (
-                <C1Component
-                  c1Response={message.content}
-                  isStreaming={false}
-                  onAction={(event) => {
-                    const params = event?.params ?? {};
-                    const followUp =
-                      params.llmFriendlyMessage ||
-                      params.humanFriendlyMessage ||
-                      'Continue a análise com base no mesmo contexto.';
-                    void sendMessage(String(followUp));
-                  }}
-                />
+                <div className="thesys-response-shell">
+                  <C1Component
+                    c1Response={message.content}
+                    isStreaming={false}
+                    onAction={(event) => {
+                      const params = event?.params ?? {};
+                      const followUp =
+                        params.llmFriendlyMessage ||
+                        params.humanFriendlyMessage ||
+                        'Continue a análise com base no mesmo contexto.';
+                      void sendMessage(String(followUp));
+                    }}
+                  />
+                </div>
               ) : (
                 <p>{message.content}</p>
               )}
@@ -1278,8 +1282,8 @@ function QuickSummaryModal({ article, onClose, onSave, toast }: { article: Artic
   }, [article]);
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal">
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(event) => event.stopPropagation()}>
         <h3>Resumo Estruturado</h3>
         {loading && <p className="meta">Gerando resumo com LLM...</p>}
         {summary && (
@@ -1326,8 +1330,8 @@ function SynthesisModal({ articles, type, size, setType, setSize, articleCount, 
   } | null>(null);
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal large">
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal large" onClick={(event) => event.stopPropagation()}>
         <h3>Gerar Sintese</h3>
         <label>Tipo de sintese<select value={type} onChange={(e) => setType(e.target.value as SynthesisType)}><option>Revisao comparativa</option><option>Mapa de evidencias</option><option>Aplicacao clinica</option></select></label>
         <label>Tamanho<select value={size} onChange={(e) => setSize(e.target.value as SynthesisSize)}><option>Curto</option><option>Medio</option><option>Longo</option></select></label>
