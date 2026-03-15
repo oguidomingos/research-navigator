@@ -18,6 +18,7 @@ import {
   Sun,
   Trash2,
   User,
+  X,
 } from 'lucide-react';
 import { SignIn, SignOutButton, SignUp, useAuth, useUser } from "@clerk/clerk-react";
 import './App.css';
@@ -483,7 +484,12 @@ function AppShell() {
       {pendingSaveArticle && (
         <div className="modal-backdrop" onClick={() => setPendingSaveArticle(null)}>
           <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Salvar em qual coleção?</h3>
+            <div className="modal-header">
+              <h3>Salvar em qual coleção?</h3>
+              <button type="button" className="ghost modal-close-btn" onClick={() => setPendingSaveArticle(null)} aria-label="Fechar modal">
+                <X size={16} />
+              </button>
+            </div>
             <p className="meta">{pendingSaveArticle.title}</p>
             <label>
               Coleção
@@ -1284,7 +1290,12 @@ function QuickSummaryModal({ article, onClose, onSave, toast }: { article: Artic
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(event) => event.stopPropagation()}>
-        <h3>Resumo Estruturado</h3>
+        <div className="modal-header">
+          <h3>Resumo Estruturado</h3>
+          <button type="button" className="ghost modal-close-btn" onClick={onClose} aria-label="Fechar modal">
+            <X size={16} />
+          </button>
+        </div>
         {loading && <p className="meta">Gerando resumo com LLM...</p>}
         {summary && (
           <>
@@ -1332,7 +1343,12 @@ function SynthesisModal({ articles, type, size, setType, setSize, articleCount, 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal large" onClick={(event) => event.stopPropagation()}>
-        <h3>Gerar Sintese</h3>
+        <div className="modal-header">
+          <h3>Gerar Sintese</h3>
+          <button type="button" className="ghost modal-close-btn" onClick={onClose} aria-label="Fechar modal">
+            <X size={16} />
+          </button>
+        </div>
         <label>Tipo de sintese<select value={type} onChange={(e) => setType(e.target.value as SynthesisType)}><option>Revisao comparativa</option><option>Mapa de evidencias</option><option>Aplicacao clinica</option></select></label>
         <label>Tamanho<select value={size} onChange={(e) => setSize(e.target.value as SynthesisSize)}><option>Curto</option><option>Medio</option><option>Longo</option></select></label>
         <p className="meta">Base: {articleCount} artigos salvos</p>
